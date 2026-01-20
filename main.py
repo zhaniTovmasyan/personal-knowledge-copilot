@@ -1,25 +1,3 @@
-# import os
-# from fastapi import FastAPI
-# from dotenv import load_dotenv
-# from openai import OpenAI
-
-# load_dotenv()
-
-# app = FastAPI()
-# client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# @app.get("/")
-
-# def health():
-#     return {"status": "ok"}
-
-# @app.post("/ask")
-
-# def ask_knowledge(question: str):
-#     return {
-#         "question": question,
-#         "answer": "Coming next: RAG logic"
-#     }
 import os
 import math
 from typing import List, Dict, Any
@@ -60,6 +38,15 @@ class ListKnowledgeItem(BaseModel):
 class ListKnowledgeResponse(BaseModel):
     items: List[ListKnowledgeItem]
 
+class AskRequest(BaseModel):
+    question: str
+
+class AskResponse(BaseModel):
+    answer: str
+    used_ids: List[int]
+    context_preview: str
+
+
 # -----------------------------
 # Helpers
 # -----------------------------
@@ -77,6 +64,55 @@ def preview(text: str, n: int = 80) -> str:
     """Short preview for list UI."""
     t = " ".join(text.split())
     return t[:n] + ("…" if len(t) > n else "")
+
+def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
+    dot = sum(a * b for a, b in zip(vec1, vec2))
+    mag1 = math.sqrt(sum(a * a for a in vec1))
+    mag2 = math.sqrt(sum(b * b for b in vec2))
+    return dot / (mag1 * mag2)
+
+def retrieve_top_k(question: str, k: int = 2, min_score: float = 0.25):
+    q_emb = embed_text(question)
+
+    scored = []
+    for it in KNOWLEDGE:
+        score = cosine_similarity(q_emb, it["embedding"])
+        scored.append((score, it))
+
+
+    # sort by similarity (high → low)
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    # FILTER by threshold
+    filtered = [(s, it) for (s, it) in scored if s >= min_score]
+
+    # return only the items (without scores)
+    return [it for (s, it) in filtered[:k]]
+
+def generate_answer(question: str, context: str) -> str:
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        temperature=0,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Answer using ONLY the provided context.\n"
+                    "- If the context is insufficient, reply: \"I don't have enough information in your knowledge.\"\n"
+                    "- Keep the answer to 3-5 sentences.\n"
+                    "- Do not invent facts.\n"
+                    "- Cite the sources you used at the end in this format: Sources: [id].\n"
+                    "- Use ONLY the ids that appear in the context.\n"
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Context:\n{context}\n\nQuestion:\n{question}",
+            },
+        ],
+    )
+    return resp.choices[0].message.content
+
 
 # -----------------------------
 # Routes
@@ -116,7 +152,22 @@ def list_knowledge():
     ]
     return {"items": items}
 
-@app.post("/ask")
-def ask_knowledge(question: str):
-    # Placeholder: tomorrow (Day 3) we’ll do semantic search + RAG
-    return {"question": question, "answer": "Coming next: semantic search + RAG"}    
+@app.post("/ask", response_model=AskResponse)
+def ask(payload: AskRequest):
+    question = payload.question.strip()
+    if not question:
+        return {"answer": "Please provide a question.", "used_ids": [], "context_preview": ""}
+
+    if not KNOWLEDGE:
+        return {"answer": "I don't have any knowledge yet.", "used_ids": [], "context_preview": ""}
+
+    top_items = retrieve_top_k(question, k=2)
+    context = "\n\n".join([f"[{it['id']}] {it['text']}" for it in top_items])
+
+    answer = generate_answer(question, context)
+
+    return {
+        "answer": answer,
+        "used_ids": [it["id"] for it in top_items],
+        "context_preview": preview(context, 200),
+    }
