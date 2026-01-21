@@ -2,22 +2,23 @@ import os
 import math
 from typing import List, Dict, Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from openai import OpenAI
+
+from sqlalchemy.orm import Session
+from db import SessionLocal, engine, Base
+from models import KnowledgeChunk
+from storage import save_chunk, list_chunks, load_embedding
+import time
 
 load_dotenv()
 
 app = FastAPI()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# -----------------------------
-# In-memory store (V0.1)
-# -----------------------------
-# Each item: {"id": int, "text": str, "embedding": List[float]}
-KNOWLEDGE: List[Dict[str, Any]] = []
-NEXT_ID = 1
+Base.metadata.create_all(bind=engine)
 
 # -----------------------------
 # Models
@@ -51,14 +52,22 @@ class AskResponse(BaseModel):
 # Helpers
 # -----------------------------
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 def embed_text(text: str) -> List[float]:
     """Creates an embedding vector for a given text"""
-     # Keep it simple for V0.1: embed the whole text as one chunk
+    # Keep it simple for V0.1: embed the whole text as one chunk
     resp = client.embeddings.create(
         model="text-embedding-3-small",
         input=text,
     )
     return resp.data[0].embedding
+
 
 def preview(text: str, n: int = 80) -> str:
     """Short preview for list UI."""
@@ -71,14 +80,20 @@ def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     mag2 = math.sqrt(sum(b * b for b in vec2))
     return dot / (mag1 * mag2)
 
-def retrieve_top_k(question: str, k: int = 2, min_score: float = 0.25):
+def retrieve_top_k(
+    question: str,
+    db: Session,
+    k: int = 2,
+    min_score: float = 0.25,
+):    
     q_emb = embed_text(question)
-
     scored = []
-    for it in KNOWLEDGE:
-        score = cosine_similarity(q_emb, it["embedding"])
-        scored.append((score, it))
+    rows = list_chunks(db)  # <-- идва от SQLite
 
+    for row in rows:
+        chunk_embedding = load_embedding(row)
+        score = cosine_similarity(q_emb, chunk_embedding)
+        scored.append((score, row))
 
     # sort by similarity (high → low)
     scored.sort(key=lambda x: x[0], reverse=True)
@@ -143,63 +158,59 @@ def health():
     return {"status": "ok"}
 
 @app.post("/knowledge", response_model=AddKnowledgeResponse)
-def add_knowledge(payload: AddKnowledgeRequest):
-    global NEXT_ID
-
+def add_knowledge(payload: AddKnowledgeRequest, db: Session = Depends(get_db)):
     text = payload.text.strip()
     if not text:
         return {"id": -1, "chars": 0}
 
-    parent_id = NEXT_ID
-    NEXT_ID += 1
+    parent_id = int(time.time() * 1000)  # simple V0.1
 
     chunks = chunk_text(text, max_chars=400)
 
     for idx, chunk in enumerate(chunks):
         emb = embed_text(chunk)
-
-        KNOWLEDGE.append(
-            {
-                "id": NEXT_ID,
-                "parent_id": parent_id,
-                "chunk_index": idx,
-                "text": chunk,
-                "embedding": emb,
-            }
-        )
-        NEXT_ID += 1
+        save_chunk(db, parent_id=parent_id, chunk_index=idx, text=chunk, embedding=emb)
 
     return {"id": parent_id, "chars": len(text)}
 
 
 @app.get("/knowledge", response_model=ListKnowledgeResponse)
-def list_knowledge():
+def list_knowledge_endpoint(db: Session = Depends(get_db)):
+    rows = list_chunks(db)
+
     items = [
         {
-            "id": it["id"],
-            "text_preview": preview(it["text"]),
-            "chars": len(it["text"]),
+            "id": r.id,
+            "text_preview": preview(r.text),
+            "chars": len(r.text),
         }
-        for it in KNOWLEDGE
+        for r in rows
     ]
     return {"items": items}
 
 @app.post("/ask", response_model=AskResponse)
-def ask(payload: AskRequest):
+def ask(payload: AskRequest, db: Session = Depends(get_db)):
     question = payload.question.strip()
     if not question:
         return {"answer": "Please provide a question.", "used_ids": [], "context_preview": ""}
 
-    if not KNOWLEDGE:
-        return {"answer": "I don't have any knowledge yet.", "used_ids": [], "context_preview": ""}
+    top_rows = retrieve_top_k(question, db, k=3, min_score=0.25)
 
-    top_items = retrieve_top_k(question, k=2)
-    context = "\n\n".join([f"[{it['id']}] {it['text']}" for it in top_items])
+    if not top_rows:
+        return {
+            "answer": "I don't have enough information in your knowledge.",
+            "used_ids": [],
+            "context_preview": "",
+        }
+
+    context = "\n\n".join(
+        [f"[{r.parent_id}:{r.chunk_index}] {r.text}" for r in top_rows]
+    )
 
     answer = generate_answer(question, context)
 
     return {
         "answer": answer,
-        "used_ids": [it["id"] for it in top_items],
+        "used_ids": [r.id for r in top_rows],
         "context_preview": preview(context, 200),
     }
