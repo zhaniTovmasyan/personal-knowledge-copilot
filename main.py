@@ -113,7 +113,27 @@ def generate_answer(question: str, context: str) -> str:
     )
     return resp.choices[0].message.content
 
+def chunk_text(text: str, max_chars: int = 400) -> List[str]:
+    """Split text into rough chunks by paragraphs, then by size."""
+    # split by paragraphs first
+    parts = [p.strip() for p in text.split("\n") if p.strip()]
 
+    chunks: List[str] = []
+    buffer = ""
+
+    for p in parts:
+        if not buffer:
+            buffer = p
+        elif len(buffer) + 1 + len(p) <= max_chars:
+            buffer = buffer + " " + p
+        else:
+            chunks.append(buffer)
+            buffer = p
+
+    if buffer:
+        chunks.append(buffer)
+
+    return chunks
 # -----------------------------
 # Routes
 # -----------------------------
@@ -130,15 +150,27 @@ def add_knowledge(payload: AddKnowledgeRequest):
     if not text:
         return {"id": -1, "chars": 0}
 
-    emb = embed_text(text)
+    parent_id = NEXT_ID
+    NEXT_ID += 1
 
-    item = {"id": NEXT_ID, "text": text, "embedding": emb}
-    KNOWLEDGE.append(item)
+    chunks = chunk_text(text, max_chars=400)
 
-    created_id = NEXT_ID
-    NEXT_ID +=1
+    for idx, chunk in enumerate(chunks):
+        emb = embed_text(chunk)
 
-    return {"id": created_id, "chars": len(text)}
+        KNOWLEDGE.append(
+            {
+                "id": NEXT_ID,
+                "parent_id": parent_id,
+                "chunk_index": idx,
+                "text": chunk,
+                "embedding": emb,
+            }
+        )
+        NEXT_ID += 1
+
+    return {"id": parent_id, "chars": len(text)}
+
 
 @app.get("/knowledge", response_model=ListKnowledgeResponse)
 def list_knowledge():
