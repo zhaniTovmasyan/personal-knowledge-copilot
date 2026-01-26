@@ -1,16 +1,16 @@
 import os
 import math
-from typing import List, Dict, Any
+from typing import List
 
 from fastapi import FastAPI, Depends
 
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from openai import OpenAI
+from models import KnowledgeChunk
 
 from sqlalchemy.orm import Session
 from db import SessionLocal, engine, Base
-from models import KnowledgeChunk
 from storage import save_chunk, list_chunks, load_embedding
 import time
 
@@ -44,7 +44,7 @@ class AskRequest(BaseModel):
 
 class AskResponse(BaseModel):
     answer: str
-    used_ids: List[int]
+    used_refs: List[str]
     context_preview: str
 
 
@@ -116,8 +116,8 @@ def generate_answer(question: str, context: str) -> str:
                     "- If the context is insufficient, reply: \"I don't have enough information in your knowledge.\"\n"
                     "- Keep the answer to 3-5 sentences.\n"
                     "- Do not invent facts.\n"
-                    "- Cite the sources you used at the end in this format: Sources: [id].\n"
-                    "- Use ONLY the ids that appear in the context.\n"
+                    "- Cite sources using the exact bracket ids from the context, e.g. Sources: [1769013042324:0].\n"
+                    "- If you used multiple context lines, list multiple bracket ids.\n"
                 ),
             },
             {
@@ -192,14 +192,14 @@ def list_knowledge_endpoint(db: Session = Depends(get_db)):
 def ask(payload: AskRequest, db: Session = Depends(get_db)):
     question = payload.question.strip()
     if not question:
-        return {"answer": "Please provide a question.", "used_ids": [], "context_preview": ""}
+        return {"answer": "Please provide a question.", "used_refs": [], "context_preview": ""}
 
     top_rows = retrieve_top_k(question, db, k=3, min_score=0.25)
 
     if not top_rows:
         return {
             "answer": "I don't have enough information in your knowledge.",
-            "used_ids": [],
+            "used_refs": [],
             "context_preview": "",
         }
 
@@ -211,6 +211,15 @@ def ask(payload: AskRequest, db: Session = Depends(get_db)):
 
     return {
         "answer": answer,
-        "used_ids": [r.id for r in top_rows],
+        "used_refs": [f"{r.parent_id}:{r.chunk_index}" for r in top_rows],
         "context_preview": preview(context, 200),
     }
+
+@app.post("/debug/reset")
+def debug_reset(db: Session = Depends(get_db)):
+    if os.getenv("DEBUG", "false").lower() != "true":
+        return {"ok": False, "error": "Not allowed"}
+
+    db.query(KnowledgeChunk).delete()
+    db.commit()
+    return {"ok": True}
