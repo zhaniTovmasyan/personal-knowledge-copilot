@@ -25,7 +25,7 @@ export async function addKnowledge(text: string): Promise<AddKnowledgeResponse> 
 
 export type AskResponse = {
   answer: string;
-  used_refs: string[];
+  used_ids: number[];
   context_preview: string;
 };
 
