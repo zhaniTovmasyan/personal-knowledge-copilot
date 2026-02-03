@@ -1,9 +1,16 @@
 # Python
+venv/
+.venv/
 __pycache__/
 *.pyc
 .env
-.venv
-venv/
 
-# Database
-copilot.db
+# DB
+*.db
+
+# Expo/Node
+mobile/**/node_modules/
+mobile/**/.expo/
+mobile/**/dist/
+mobile/**/web-build/
+.DS_Store
