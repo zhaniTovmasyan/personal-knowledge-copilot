@@ -41,18 +41,11 @@ class ListKnowledgeResponse(BaseModel):
 
 class AskRequest(BaseModel):
     question: str
-    
-class SourceItem(BaseModel):
-    id: int
-    parent_id: int
-    chunk_index: int
-    text_preview: str
 
 class AskResponse(BaseModel):
     answer: str
     used_ids: List[int]
     context_preview: str
-    sources: List[SourceItem]
 
 
 # -----------------------------
@@ -199,12 +192,7 @@ def list_knowledge_endpoint(db: Session = Depends(get_db)):
 def ask(payload: AskRequest, db: Session = Depends(get_db)):
     question = payload.question.strip()
     if not question:
-        return {
-            "answer": "Please provide a question.",
-            "used_ids": [],
-            "context_preview": "",
-            "sources": [],
-        }
+        return {"answer": "Please provide a question.", "used_ids": [], "context_preview": ""}
 
     top_rows = retrieve_top_k(question, db, k=3, min_score=0.25)
 
@@ -213,30 +201,16 @@ def ask(payload: AskRequest, db: Session = Depends(get_db)):
             "answer": "I don't have enough information in your knowledge.",
             "used_ids": [],
             "context_preview": "",
-            "sources": [],
         }
 
-    # Build context for the LLM
     context = "\n\n".join(
         [f"[{r.parent_id}:{r.chunk_index}] {r.text}" for r in top_rows]
     )
 
     answer = generate_answer(question, context)
 
-    # Build sources for the UI
-    sources = [
-        {
-            "id": r.id,
-            "parent_id": r.parent_id,
-            "chunk_index": r.chunk_index,
-            "text_preview": preview(r.text, 120),
-        }
-        for r in top_rows
-    ]
-
     return {
         "answer": answer,
         "used_ids": [r.id for r in top_rows],
         "context_preview": preview(context, 200),
-        "sources": sources,
     }
