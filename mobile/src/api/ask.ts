@@ -1,26 +1,18 @@
 import { postJSON } from "./client";
 
-export type Source = {
+export type SourceItem = {
   id: number;
-  preview: string;
-  score?: number;
+  parent_id: number;
+  chunk_index: number;
+  text_preview: string;
 };
 
-export type AskResponse =
-  | {
-      ok: true;
-      answer: string;
-      used_ids: number[];
-      context_preview: string;
-      sources?: Source[];
-      confidence?: "high" | "medium" | "low";
-    }
-  | {
-      ok: false;
-      reason: "empty_kb" | "no_relevant_chunks" | "low_confidence" | "conflict";
-      message: string;
-      nearest?: Source[];
-    };
+export type AskResponse = {
+  answer: string;
+  used_ids: number[];
+  context_preview: string;
+  sources: SourceItem[];
+};
 
 export async function ask(question: string): Promise<AskResponse> {
   return postJSON<AskResponse>("/ask", { question });
