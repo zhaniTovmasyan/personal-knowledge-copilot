@@ -42,11 +42,17 @@ class ListKnowledgeResponse(BaseModel):
 class AskRequest(BaseModel):
     question: str
 
+class SourceItem(BaseModel):
+    id: int
+    parent_id: int
+    chunk_index: int
+    text_preview: str
+
 class AskResponse(BaseModel):
     answer: str
     used_ids: List[int]
     context_preview: str
-
+    sources: List[SourceItem]
 
 # -----------------------------
 # Helpers

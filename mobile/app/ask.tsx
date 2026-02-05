@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { ask } from "@/src/api/ask";
 import { ApiError } from "@/src/api/client";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { addToHistory } from "@/src/storage/history";
 
 export default function AskScreen() {
   const params = useLocalSearchParams<{ hint?: string }>();
@@ -36,6 +37,7 @@ export default function AskScreen() {
     setIsAsking(true);
     try {
       const res = await ask(cleaned);
+      await addToHistory(cleaned, res);
 
       // Pass response to Answer screen (MVP approach)
       router.push({
