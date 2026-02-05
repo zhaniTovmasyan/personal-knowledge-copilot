@@ -30,6 +30,7 @@ export function IconSymbol({
   size = 24,
   color,
   style,
+  weight,
 }: {
   name: IconSymbolName;
   size?: number;
@@ -37,5 +38,7 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
+  // Note: MaterialIcons doesn't support weight, but we accept it for API consistency
+  // with the iOS version. The weight parameter is silently ignored on Android/web.
   return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
 }
