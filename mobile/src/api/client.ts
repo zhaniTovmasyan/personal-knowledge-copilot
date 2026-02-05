@@ -72,3 +72,20 @@ export async function postJSON<T>(path: string, body: unknown, timeoutMs = DEFAU
 
   return (await res.json()) as T;
 }
+
+export async function getJSON<T>(path: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
+  const url = `${BASE_URL}${path}`;
+  const res = await fetchWithTimeout(url, { method: "GET" }, timeoutMs);
+
+  if (!res.ok) {
+    let text = "";
+    try { text = await res.text(); } catch {}
+    throw new ApiError({
+      ok: false,
+      reason: "http_error",
+      message: `HTTP ${res.status}: ${text || res.statusText}`,
+      status: res.status,
+    });
+  }
+  return (await res.json()) as T;
+}
