@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { addKnowledge } from "@/src/api/knowledge";
 import { ApiError } from "@/src/api/client";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -14,6 +14,9 @@ export default function AddScreen() {
   const [savedId, setSavedId] = useState<number | null>(null);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
+  const params = useLocalSearchParams<{ highlight?: string }>();
+  const [dismissHint, setDismissHint] = useState(false);
+  const showClipboardHint = params.highlight === "clipboard" && !dismissHint;
 
   const colors = {
     bg: isDark ? "#0B0F17" : "#F6F7FB",
@@ -45,6 +48,7 @@ export default function AddScreen() {
       }
 
       setText(cleaned);
+      setDismissHint(true);
     } catch {
       setError("Could not read clipboard.");
     } finally {
@@ -80,6 +84,21 @@ export default function AddScreen() {
         <Text style={[styles.subtitle, { color: colors.subtext }]}>
           Paste a note or text. The copilot will answer only from what you save here.
         </Text>
+        {showClipboardHint ? (
+          <View
+            style={{
+              padding: 10,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.primary,
+              backgroundColor: colors.primaryBg,
+            }}
+          >
+            <Text style={{ color: colors.primary, fontWeight: "700" }}>
+              👋 Tip: Copy text anywhere and paste it here instantly
+            </Text>
+          </View>
+        ) : null}
 
         <Pressable
           onPress={onPasteFromClipboard}
@@ -100,7 +119,10 @@ export default function AddScreen() {
         <Text style={[styles.label, { color: colors.subtext }]}>Your note</Text>
         <TextInput
           value={text}
-          onChangeText={setText}
+          onChangeText={(v) => {
+            setText(v);
+            if (showClipboardHint) setDismissHint(true);
+          }}
           placeholder="Paste your note…"
           placeholderTextColor={colors.placeholder}
           multiline
