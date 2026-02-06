@@ -57,6 +57,11 @@ export default function HomeScreen() {
         <Pressable onPress={() => router.push("/history")} style={{ paddingVertical: 6 }}>
           <Text style={{ color: colors.subtext, fontWeight: "700" }}>View history</Text>
         </Pressable>
+
+        <Pressable onPress={() => router.push("/knowledge")}>
+          <Text style={{ color: colors.subtext, fontWeight: "700" }}>View knowledge</Text>
+        </Pressable>
+
       </View>
 
       <View style={[styles.footer, { borderColor: colors.border }]}>

@@ -15,6 +15,7 @@ export default function RootLayout() {
         <Stack.Screen name="ask" options={{ title: "Ask" }} />
         <Stack.Screen name="answer" options={{ title: "Answer" }} />
         <Stack.Screen name="history" options={{ title: "History" }} />
+        <Stack.Screen name="knowledge" options={{ title: "Knowledge" }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
