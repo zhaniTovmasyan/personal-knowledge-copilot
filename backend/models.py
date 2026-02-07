@@ -6,6 +6,7 @@ class KnowledgeChunk(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     parent_id = Column(Integer, index=True)
+    case_id = Column(Integer, index=True)
     chunk_index = Column(Integer)
     text = Column(Text, nullable=False)
     # store embedding as a JSON string for V0.1 (simple)
