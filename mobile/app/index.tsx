@@ -62,6 +62,9 @@ export default function HomeScreen() {
           <Text style={{ color: colors.subtext, fontWeight: "700" }}>View knowledge</Text>
         </Pressable>
 
+        <Pressable onPress={() => router.push("/cases")}>
+          <Text style={{ color: colors.subtext, fontWeight: "700" }}>View cases</Text>
+        </Pressable>
       </View>
 
       <View style={[styles.footer, { borderColor: colors.border }]}>
