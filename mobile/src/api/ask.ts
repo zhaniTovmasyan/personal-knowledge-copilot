@@ -1,4 +1,5 @@
 import { postJSON } from "./client";
+import { withCase } from "./withCase";
 
 export type SourceItem = {
   id: number;
@@ -15,5 +16,6 @@ export type AskResponse = {
 };
 
 export async function ask(question: string): Promise<AskResponse> {
-  return postJSON<AskResponse>("/ask", { question });
+  const url = await withCase("/ask");
+  return postJSON<AskResponse>(url, { question });
 }
