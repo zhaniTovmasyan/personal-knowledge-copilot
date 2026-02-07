@@ -197,10 +197,19 @@ def list_knowledge_endpoint(
     return {"items": items}
 
 @app.post("/ask", response_model=AskResponse)
-def ask(payload: AskRequest, db: Session = Depends(get_db),case_id: int = Query(...)):
+def ask(
+    payload: AskRequest,
+    case_id: int = Query(...),
+    db: Session = Depends(get_db),
+):
     question = payload.question.strip()
     if not question:
-        return {"answer": "Please provide a question.", "used_ids": [], "context_preview": ""}
+        return {
+            "answer": "Please provide a question.",
+            "used_ids": [],
+            "context_preview": "",
+            "sources": [],
+        }
 
     top_rows = retrieve_top_k(question, db, case_id=case_id, k=3, min_score=0.25)
 
@@ -209,6 +218,7 @@ def ask(payload: AskRequest, db: Session = Depends(get_db),case_id: int = Query(
             "answer": "I don't have enough information in your knowledge.",
             "used_ids": [],
             "context_preview": "",
+            "sources": [],
         }
 
     context = "\n\n".join(
@@ -217,8 +227,19 @@ def ask(payload: AskRequest, db: Session = Depends(get_db),case_id: int = Query(
 
     answer = generate_answer(question, context)
 
+    sources = [
+        {
+            "id": r.id,
+            "parent_id": r.parent_id,
+            "chunk_index": r.chunk_index,
+            "text_preview": preview(r.text, 120),
+        }
+        for r in top_rows
+    ]
+
     return {
         "answer": answer,
         "used_ids": [r.id for r in top_rows],
         "context_preview": preview(context, 200),
+        "sources": sources,
     }
