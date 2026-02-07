@@ -2,7 +2,7 @@ import os
 import math
 from typing import List, Dict, Any
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Query
 
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -89,12 +89,13 @@ def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
 def retrieve_top_k(
     question: str,
     db: Session,
+    case_id: int,
     k: int = 2,
     min_score: float = 0.25,
 ):    
     q_emb = embed_text(question)
     scored = []
-    rows = list_chunks(db)  # <-- идва от SQLite
+    rows = list_chunks(db, case_id=case_id)
 
     for row in rows:
         chunk_embedding = load_embedding(row)
@@ -164,25 +165,26 @@ def health():
     return {"status": "ok"}
 
 @app.post("/knowledge", response_model=AddKnowledgeResponse)
-def add_knowledge(payload: AddKnowledgeRequest, db: Session = Depends(get_db)):
+def add_knowledge(payload: AddKnowledgeRequest, db: Session = Depends(get_db),  case_id: int = Query(...)):
     text = payload.text.strip()
     if not text:
         return {"id": -1, "chars": 0}
 
     parent_id = int(time.time() * 1000)  # simple V0.1
-
     chunks = chunk_text(text, max_chars=400)
 
     for idx, chunk in enumerate(chunks):
         emb = embed_text(chunk)
-        save_chunk(db, parent_id=parent_id, chunk_index=idx, text=chunk, embedding=emb)
+        save_chunk(db, case_id=case_id, parent_id=parent_id, chunk_index=idx, text=chunk, embedding=emb)
 
     return {"id": parent_id, "chars": len(text)}
 
-
 @app.get("/knowledge", response_model=ListKnowledgeResponse)
-def list_knowledge_endpoint(db: Session = Depends(get_db)):
-    rows = list_chunks(db)
+def list_knowledge_endpoint(
+    case_id: int = Query(...),
+    db: Session = Depends(get_db),
+):
+    rows = list_chunks(db, case_id=case_id)
 
     items = [
         {
@@ -195,12 +197,12 @@ def list_knowledge_endpoint(db: Session = Depends(get_db)):
     return {"items": items}
 
 @app.post("/ask", response_model=AskResponse)
-def ask(payload: AskRequest, db: Session = Depends(get_db)):
+def ask(payload: AskRequest, db: Session = Depends(get_db),case_id: int = Query(...)):
     question = payload.question.strip()
     if not question:
         return {"answer": "Please provide a question.", "used_ids": [], "context_preview": ""}
 
-    top_rows = retrieve_top_k(question, db, k=3, min_score=0.25)
+    top_rows = retrieve_top_k(question, db, case_id=case_id, k=3, min_score=0.25)
 
     if not top_rows:
         return {

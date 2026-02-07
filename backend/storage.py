@@ -3,8 +3,9 @@ from typing import List
 from sqlalchemy.orm import Session
 from models import KnowledgeChunk
 
-def save_chunk(db: Session, parent_id: int, chunk_index: int, text: str, embedding: List[float]):
+def save_chunk(db: Session,case_id: int, parent_id: int, chunk_index: int, text: str, embedding: List[float]):
     row = KnowledgeChunk(
+        case_id=case_id,
         parent_id=parent_id,
         chunk_index=chunk_index,
         text=text,
@@ -15,8 +16,13 @@ def save_chunk(db: Session, parent_id: int, chunk_index: int, text: str, embeddi
     db.refresh(row)
     return row
 
-def list_chunks(db: Session):
-    return db.query(KnowledgeChunk).order_by(KnowledgeChunk.id.asc()).all()
+def list_chunks(db: Session, case_id: int):
+    return (
+        db.query(KnowledgeChunk)
+        .filter(KnowledgeChunk.case_id == case_id)
+        .order_by(KnowledgeChunk.id.asc())
+        .all()
+    )
 
 def load_embedding(row: KnowledgeChunk) -> List[float]:
     return json.loads(row.embedding_json)
