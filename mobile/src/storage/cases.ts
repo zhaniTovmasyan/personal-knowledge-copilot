@@ -43,3 +43,10 @@ export async function getCurrentCaseId(): Promise<number | null> {
 export async function setCurrentCaseId(caseId: number) {
   await AsyncStorage.setItem(CURRENT_KEY, String(caseId));
 }
+
+export async function getCurrentCase(): Promise<CaseItem | null> {
+    const [cases, currentId] = await Promise.all([loadCases(), getCurrentCaseId()]);
+    if (!currentId) return null;
+    return cases.find((c) => c.id === currentId) ?? null;
+  }
+  

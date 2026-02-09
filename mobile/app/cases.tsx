@@ -1,24 +1,29 @@
 import { useCallback, useState } from "react";
-import { View, Text, TextInput, Pressable, FlatList, StyleSheet } from "react-native";
-import { useFocusEffect, router } from "expo-router";
-import { createCase, loadCases, setCurrentCaseId, type CaseItem, getCurrentCaseId } from "@/src/storage/cases";
+import { View, Text, TextInput, Pressable, FlatList, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { router, useFocusEffect } from "expo-router";
+import { createCase, loadCases, setCurrentCaseId, getCurrentCaseId, type CaseItem } from "@/src/storage/cases";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function CasesScreen() {
-  const [items, setItems] = useState<CaseItem[]>([]);
-  const [name, setName] = useState("");
-  const [currentId, setCurrentId] = useState<number | null>(null);
-
   const isDark = useColorScheme() === "dark";
+
   const colors = {
     bg: isDark ? "#0B0F17" : "#F6F7FB",
-    card: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.9)",
-    border: isDark ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.10)",
+    card: isDark ? "rgba(255,255,255,0.06)" : "#FFFFFF",
+    card2: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.9)",
+    border: isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.10)",
     text: isDark ? "#FFFFFF" : "#0F172A",
-    subtext: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.70)",
-    primary: isDark ? "#60A5FA" : "#2563EB",
-    primaryBg: isDark ? "rgba(96,165,250,0.18)" : "rgba(37,99,235,0.12)",
+    subtext: isDark ? "rgba(255,255,255,0.65)" : "rgba(15,23,42,0.60)",
+    muted: isDark ? "rgba(255,255,255,0.45)" : "rgba(15,23,42,0.45)",
+    orange: "#F59E0B",
+    orangeBg: isDark ? "rgba(245,158,11,0.16)" : "rgba(245,158,11,0.10)",
+    danger: "#FF6B6B",
   };
+
+  const [items, setItems] = useState<CaseItem[]>([]);
+  const [currentId, setCurrentId] = useState<number | null>(null);
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [cases, cur] = await Promise.all([loadCases(), getCurrentCaseId()]);
@@ -32,62 +37,91 @@ export default function CasesScreen() {
     }, [refresh])
   );
 
+  const canCreate = name.trim().length >= 3;
+
   async function onCreate() {
+    setError(null);
     const cleaned = name.trim();
-    if (!cleaned) return;
+    if (cleaned.length < 3) {
+      setError("Case name should be at least 3 characters.");
+      return;
+    }
+
     await createCase(cleaned);
     setName("");
     await refresh();
-    router.replace("/"); // go back home after create
   }
 
   async function onSelect(item: CaseItem) {
     await setCurrentCaseId(item.id);
     setCurrentId(item.id);
-    router.replace("/"); // go back home after select
+    router.back(); // return to previous screen
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.bg }]}>
+    <KeyboardAvoidingView
+      style={[styles.screen, { backgroundColor: colors.bg }]}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Cases</Text>
         <Text style={[styles.subtitle, { color: colors.subtext }]}>
-          Each case is an isolated knowledge space.
+          Each case is an isolated workspace.
         </Text>
       </View>
 
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Text style={[styles.label, { color: colors.subtext }]}>New case</Text>
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder="e.g. Smith v. Johnson"
-          placeholderTextColor={isDark ? "rgba(255,255,255,0.45)" : "rgba(15,23,42,0.35)"}
-          style={[styles.input, { color: colors.text }]}
-        />
+      {/* Create case */}
+      <View style={[styles.createCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.upperLabel, { color: colors.muted }]}>Create a new case</Text>
+
+        <View style={[styles.inputWrap, { backgroundColor: colors.card2, borderColor: colors.border }]}>
+          <TextInput
+            value={name}
+            onChangeText={(v) => {
+              setName(v);
+              if (error) setError(null);
+            }}
+            placeholder="e.g. Smith v. Johnson"
+            placeholderTextColor={colors.muted}
+            style={[styles.input, { color: colors.text }]}
+            autoCapitalize="words"
+            returnKeyType="done"
+            onSubmitEditing={onCreate}
+          />
+        </View>
+
+        {error ? <Text style={{ color: colors.danger, fontWeight: "700" }}>{error}</Text> : null}
+
         <Pressable
           onPress={onCreate}
-          disabled={!name.trim()}
+          disabled={!canCreate}
           style={[
-            styles.button,
-            { backgroundColor: name.trim() ? colors.primary : colors.primaryBg, borderColor: colors.border },
+            styles.createBtn,
+            {
+              backgroundColor: canCreate ? colors.orange : colors.orangeBg,
+              opacity: canCreate ? 1 : 0.7,
+            },
           ]}
         >
-          <Text style={{ color: name.trim() ? "#fff" : colors.primary, fontWeight: "800" }}>
+          <Text style={[styles.createBtnText, { color: canCreate ? "#111827" : colors.orange }]}>
             Create case
           </Text>
         </Pressable>
       </View>
 
+      {/* List */}
+      <Text style={[styles.sectionTitle, { color: colors.muted }]}>Your cases</Text>
+
       <FlatList
         data={items}
         keyExtractor={(it) => String(it.id)}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
         ListEmptyComponent={
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={{ color: colors.text, fontWeight: "800" }}>No cases yet</Text>
-            <Text style={{ color: colors.subtext }}>
-              Create a case to start adding confidential notes.
+            <Text style={{ color: colors.text, fontWeight: "900", fontSize: 16 }}>No cases yet</Text>
+            <Text style={{ color: colors.subtext, marginTop: 4 }}>
+              Create your first case to start adding notes and asking questions.
             </Text>
           </View>
         }
@@ -98,48 +132,53 @@ export default function CasesScreen() {
               onPress={() => onSelect(item)}
               style={[
                 styles.row,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: isCurrent ? colors.primary : colors.border,
-                },
+                { backgroundColor: colors.card, borderColor: isCurrent ? colors.orange : colors.border },
               ]}
             >
-              <Text style={[styles.rowTitle, { color: colors.text }]} numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text style={{ color: isCurrent ? colors.primary : colors.subtext, fontWeight: "700" }}>
-                {isCurrent ? "Current" : "Tap to open"}
-              </Text>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={[styles.rowTitle, { color: colors.text }]} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={{ color: colors.subtext, fontWeight: "700", fontSize: 12 }}>
+                  {isCurrent ? "Currently selected" : "Tap to select"}
+                </Text>
+              </View>
+
+              {isCurrent ? (
+                <View style={[styles.badge, { backgroundColor: colors.orangeBg, borderColor: colors.border }]}>
+                  <Text style={{ color: colors.orange, fontWeight: "900" }}>Current</Text>
+                </View>
+              ) : null}
             </Pressable>
           );
         }}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 16, gap: 12 },
+  screen: { flex: 1, padding: 20, gap: 14 },
+
   header: { gap: 6 },
-  title: { fontSize: 20, fontWeight: "700" },
-  subtitle: { fontSize: 14, lineHeight: 20 },
-  card: { borderWidth: 1, borderRadius: 16, padding: 12, gap: 10 },
-  label: { fontSize: 12, fontWeight: "700", letterSpacing: 0.4, textTransform: "uppercase" },
-  input: {
-    borderWidth: 1,
-    borderColor: "transparent",
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.02)",
-    fontSize: 16,
-  },
-  button: {
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  empty: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 6, marginTop: 8 },
-  row: { borderWidth: 1, borderRadius: 16, padding: 12, marginBottom: 10, gap: 6 },
-  rowTitle: { fontSize: 16, fontWeight: "800" },
+  title: { fontSize: 28, fontWeight: "900", letterSpacing: -0.5 },
+  subtitle: { fontSize: 13 },
+
+  createCard: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 10 },
+  upperLabel: { fontSize: 12, fontWeight: "900", letterSpacing: 0.4, textTransform: "uppercase" },
+
+  inputWrap: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10 },
+  input: { fontSize: 16, fontWeight: "800" },
+
+  createBtn: { borderRadius: 16, paddingVertical: 14, alignItems: "center" },
+  createBtnText: { fontWeight: "900", fontSize: 16 },
+
+  sectionTitle: { fontSize: 12, fontWeight: "900", letterSpacing: 0.4, textTransform: "uppercase" },
+
+  row: { borderWidth: 1, borderRadius: 18, padding: 14, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 10 },
+  rowTitle: { fontSize: 16, fontWeight: "900" },
+
+  badge: { borderWidth: 1, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12 },
+
+  empty: { borderWidth: 1, borderRadius: 18, padding: 16 },
 });
