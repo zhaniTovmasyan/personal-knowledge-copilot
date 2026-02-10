@@ -1,21 +1,17 @@
 import { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-native";
 import { listKnowledge, type ListKnowledgeItem } from "@/src/api/knowledge";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function KnowledgeScreen() {
   const [items, setItems] = useState<ListKnowledgeItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-
   const colors = {
-    bg: isDark ? "#0B0F17" : "#F6F7FB",
-    card: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.9)",
-    border: isDark ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.10)",
-    text: isDark ? "#FFFFFF" : "#0F172A",
-    subtext: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.70)",
+    bg: "#0B0F17",
+    card: "rgba(255,255,255,0.06)",
+    border: "rgba(255,255,255,0.10)",
+    text: "#FFFFFF",
+    subtext: "rgba(255,255,255,0.72)",
   };
 
   async function load() {

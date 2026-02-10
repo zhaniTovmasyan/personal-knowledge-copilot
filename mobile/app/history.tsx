@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import { View, Text, FlatList, Pressable, StyleSheet, Alert } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { loadHistory, clearHistory, type HistoryItem } from "@/src/storage/history";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 
 function formatTime(ts: number) {
   const d = new Date(ts);
@@ -14,16 +13,13 @@ export default function HistoryScreen() {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-
   const colors = {
-    bg: isDark ? "#0B0F17" : "#F6F7FB",
-    card: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.9)",
-    border: isDark ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.10)",
-    text: isDark ? "#FFFFFF" : "#0F172A",
-    subtext: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.70)",
-    primary: isDark ? "#60A5FA" : "#2563EB",
+    bg: "#0B0F17",
+    card: "rgba(255,255,255,0.06)",
+    border: "rgba(255,255,255,0.10)",
+    text: "#FFFFFF",
+    subtext: "rgba(255,255,255,0.72)",
+    primary: "#60A5FA",
     danger: "#FF6B6B",
   };
 

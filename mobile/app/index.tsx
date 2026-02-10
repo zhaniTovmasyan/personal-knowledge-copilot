@@ -1,12 +1,10 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getCurrentCase, type CaseItem } from "@/src/storage/cases";
 import { useCallback, useState } from "react";
 
 export default function HomeScreen() {
-  const isDark = useColorScheme() === "dark";
   const [currentCase, setCurrentCase] = useState<CaseItem | null>(null);
   const hasCase = Boolean(currentCase);
 
@@ -22,15 +20,15 @@ export default function HomeScreen() {
   );
 
   const colors = {
-    bg: isDark ? "#0B0F17" : "#F6F7FB",
-    card: isDark ? "rgba(255,255,255,0.06)" : "#FFFFFF",
-    card2: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.9)",
-    border: isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.10)",
-    text: isDark ? "#FFFFFF" : "#0F172A",
-    subtext: isDark ? "rgba(255,255,255,0.65)" : "rgba(15,23,42,0.60)",
-    muted: isDark ? "rgba(255,255,255,0.45)" : "rgba(15,23,42,0.45)",
+    bg: "#0B0F17",
+    card: "rgba(255,255,255,0.06)",
+    card2: "rgba(255,255,255,0.04)",
+    border: "rgba(255,255,255,0.08)",
+    text: "#FFFFFF",
+    subtext: "rgba(255,255,255,0.65)",
+    muted: "rgba(255,255,255,0.45)",
     orange: "#F59E0B",
-    orangeBg: isDark ? "rgba(245,158,11,0.16)" : "rgba(245,158,11,0.10)",
+    orangeBg: "rgba(245,158,11,0.16)",
   };
 
   return (
@@ -103,6 +101,7 @@ export default function HomeScreen() {
           style={[
             styles.secondary,
             {
+              borderColor: "rgba(245,158,11,0.55)",
               opacity: hasCase ? 1 : 0.45,
             },
           ]}
@@ -189,8 +188,8 @@ const styles = StyleSheet.create({
   actionsBlock: { gap: 12, marginBottom: 26 },
 
   primary: { borderRadius: 18, padding: 16, gap: 6 },
-  primaryText: { color: "#111827", fontSize: 18, fontWeight: "900" },
-  primarySubText: { color: "rgba(17,24,39,0.75)", fontSize: 13, fontWeight: "700" },
+  primaryText: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
+  primarySubText: { color: "rgba(255,255,255,0.75)", fontSize: 13, fontWeight: "700" },
 
   secondary: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 6 },
   secondaryText: { fontSize: 18, fontWeight: "900" },

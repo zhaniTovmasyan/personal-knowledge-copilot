@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 
 type SourceItem = {
   id: number;
@@ -21,17 +20,15 @@ const NO_INFO_TEXT = "I don't have enough information in your knowledge.";
 
 export default function AnswerScreen() {
   const params = useLocalSearchParams<{ payload?: string; q?: string }>();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
 
   const colors = {
-    bg: isDark ? "#0B0F17" : "#F6F7FB",
-    card: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.9)",
-    border: isDark ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.10)",
-    text: isDark ? "#FFFFFF" : "#0F172A",
-    subtext: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.70)",
-    warningBg: isDark ? "rgba(245,158,11,0.18)" : "rgba(245,158,11,0.12)",
-    warningText: isDark ? "#FBBF24" : "#B45309",
+    bg: "#0B0F17",
+    card: "rgba(255,255,255,0.06)",
+    border: "rgba(255,255,255,0.10)",
+    text: "#FFFFFF",
+    subtext: "rgba(255,255,255,0.72)",
+    warningBg: "rgba(245,158,11,0.18)",
+    warningText: "#FBBF24",
   };
 
   const data: AskResponse | null = useMemo(() => {
@@ -102,7 +99,7 @@ export default function AnswerScreen() {
                       key={s.id}
                       style={[
                         styles.sourceRow,
-                        { borderColor: colors.border, backgroundColor: "rgba(0,0,0,0.02)" },
+                        { borderColor: colors.border, backgroundColor: "rgba(255,255,255,0.04)" },
                       ]}
                     >
                       <Text style={[styles.sourceMeta, { color: colors.subtext }]}>
