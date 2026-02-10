@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable } from "react-native";
+import { router } from "expo-router";
 import { listKnowledge, type ListKnowledgeItem } from "@/src/api/knowledge";
 
 export default function KnowledgeScreen() {
@@ -41,10 +42,39 @@ export default function KnowledgeScreen() {
         <ActivityIndicator />
       ) : items.length === 0 ? (
         <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No knowledge yet</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>This case is empty</Text>
           <Text style={[styles.emptyText, { color: colors.subtext }]}>
-            Add your first note to start building your copilot.
+            Paste from clipboard or add case notes to start.
           </Text>
+
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+            <Pressable
+              onPress={() => router.push({ pathname: "/add", params: { highlight: "clipboard" } })}
+              style={{
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: "rgba(245,158,11,0.18)",
+              }}
+            >
+              <Text style={{ color: "#F59E0B", fontWeight: "800" }}>Paste from clipboard</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => router.push("/add")}
+              style={{
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <Text style={{ color: colors.text, fontWeight: "800" }}>Add case notes</Text>
+            </Pressable>
+          </View>
         </View>
       ) : (
         <FlatList

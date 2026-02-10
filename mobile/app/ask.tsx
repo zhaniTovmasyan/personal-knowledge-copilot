@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { ask } from "@/src/api/ask";
 import { ApiError } from "@/src/api/client";
 import { addToHistory } from "@/src/storage/history";
+import { listKnowledge } from "@/src/api/knowledge";
 
 export default function AskScreen() {
   const params = useLocalSearchParams<{ hint?: string }>();
@@ -11,6 +12,8 @@ export default function AskScreen() {
   const [question, setQuestion] = useState(typeof params.hint === "string" ? params.hint : "");
   const [isAsking, setIsAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasKnowledge, setHasKnowledge] = useState<boolean | null>(null);
+  const [checkingKnowledge, setCheckingKnowledge] = useState(false);
 
   const colors = {
     bg: "#0B0F17",
@@ -23,12 +26,32 @@ export default function AskScreen() {
     danger: "#FF6B6B",
   };
 
-  const canAsk = question.trim().length > 0 && !isAsking;
+  const canAsk = question.trim().length > 0 && !isAsking && hasKnowledge === true;
+
+  useEffect(() => {
+    async function check() {
+      setCheckingKnowledge(true);
+      try {
+        const res = await listKnowledge();
+        setHasKnowledge(res.items.length > 0);
+      } catch {
+        setHasKnowledge(false);
+      } finally {
+        setCheckingKnowledge(false);
+      }
+    }
+
+    check();
+  }, []);
 
   async function onAsk() {
     setError(null);
     const cleaned = question.trim();
     if (!cleaned) return;
+    if (!hasKnowledge) {
+      setError("Add some notes to this case before asking questions.");
+      return;
+    }
 
     setIsAsking(true);
     try {
@@ -56,6 +79,52 @@ export default function AskScreen() {
           Ask a question. The answer will be based only on your saved knowledge.
         </Text>
       </View>
+
+      {hasKnowledge === false && !checkingKnowledge && (
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: "rgba(245,158,11,0.10)",
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.label, { color: colors.subtext }]}>This case is empty</Text>
+          <Text style={{ color: colors.text, marginBottom: 8 }}>
+            Paste from clipboard or add case notes before asking questions, so answers can be grounded in your facts.
+          </Text>
+
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Pressable
+              onPress={() => router.push({ pathname: "/add", params: { highlight: "clipboard" } })}
+              style={{
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: "rgba(245,158,11,0.18)",
+              }}
+            >
+              <Text style={{ color: "#F59E0B", fontWeight: "800" }}>Paste from clipboard</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => router.push("/add")}
+              style={{
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <Text style={{ color: colors.text, fontWeight: "800" }}>Add case notes</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.label, { color: colors.subtext }]}>Your question</Text>
