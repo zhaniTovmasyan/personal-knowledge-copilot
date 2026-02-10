@@ -49,4 +49,18 @@ export async function getCurrentCase(): Promise<CaseItem | null> {
     if (!currentId) return null;
     return cases.find((c) => c.id === currentId) ?? null;
   }
-  
+
+export async function deleteCase(id: number) {
+  const [cases, currentId] = await Promise.all([loadCases(), getCurrentCaseId()]);
+  const next = cases.filter((c) => c.id !== id);
+  await saveCases(next);
+
+  if (currentId === id) {
+    const newCurrent = next[0]?.id ?? null;
+    if (newCurrent == null) {
+      await AsyncStorage.removeItem(CURRENT_KEY);
+    } else {
+      await setCurrentCaseId(newCurrent);
+    }
+  }
+}
