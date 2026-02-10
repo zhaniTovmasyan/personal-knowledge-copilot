@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
+import * as Clipboard from "expo-clipboard";
+
 import { addKnowledge } from "@/src/api/knowledge";
 import { ApiError } from "@/src/api/client";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import * as Clipboard from "expo-clipboard";
+import { getCurrentCase, type CaseItem } from "@/src/storage/cases";
+import { colors } from "@/src/theme/colors";
 
 export default function AddScreen() {
   const [text, setText] = useState("");
@@ -12,28 +14,42 @@ export default function AddScreen() {
   const [isPasting, setIsPasting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<number | null>(null);
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+
   const params = useLocalSearchParams<{ highlight?: string }>();
   const [dismissHint, setDismissHint] = useState(false);
   const showClipboardHint = params.highlight === "clipboard" && !dismissHint;
 
-  const colors = {
-    bg: isDark ? "#0B0F17" : "#F6F7FB",
-    card: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.9)",
-    border: isDark ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.10)",
-    text: isDark ? "#FFFFFF" : "#0F172A",
-    subtext: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.70)",
-    placeholder: isDark ? "rgba(255,255,255,0.45)" : "rgba(15,23,42,0.35)",
-    primary: isDark ? "#60A5FA" : "#2563EB",
-    primaryBg: isDark ? "rgba(96,165,250,0.18)" : "rgba(37,99,235,0.12)",
-    danger: "#FF6B6B",
-    success: isDark ? "rgba(34,197,94,0.20)" : "rgba(34,197,94,0.12)",
-  };
+  const [currentCase, setCurrentCase] = useState<CaseItem | null>(null);
 
-  const canSave = text.trim().length > 0 && !isSaving;
+  const refresh = useCallback(async () => {
+    const c = await getCurrentCase();
+    setCurrentCase(c);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
+
+  const hasCase = Boolean(currentCase);
+
+
+
+  const canSave = hasCase && text.trim().length > 0 && !isSaving;
+
+  function requireCaseOrGo() {
+    if (!hasCase) {
+      setError("Please choose a case first.");
+      router.push("/cases");
+      return false;
+    }
+    return true;
+  }
 
   async function onPasteFromClipboard() {
+    if (!requireCaseOrGo()) return;
+
     setError(null);
     setSavedId(null);
 
@@ -57,6 +73,8 @@ export default function AddScreen() {
   }
 
   async function onSave() {
+    if (!requireCaseOrGo()) return;
+
     setError(null);
     setSavedId(null);
 
@@ -78,45 +96,72 @@ export default function AddScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
+      {/* Current case bar */}
+      <View style={[styles.caseBar, { borderColor: colors.border, backgroundColor: colors.card }]}>
+        <Text style={[styles.caseBarLabel, { color: colors.subtext }]}>Current case</Text>
+
+        <View style={styles.caseBarRow}>
+          <Text style={[styles.caseBarName, { color: colors.text }]} numberOfLines={1}>
+            {currentCase?.name ?? "No case selected"}
+          </Text>
+
+          <Pressable onPress={() => router.push("/cases")} style={styles.caseBarBtn}>
+            <Text style={{ color: colors.orange, fontWeight: "800" }}>
+              {hasCase ? "Switch" : "Choose"}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Add knowledge</Text>
 
         <Text style={[styles.subtitle, { color: colors.subtext }]}>
-          Paste a note or text. The copilot will answer only from what you save here.
+          Paste from clipboard or type case notes. Saved notes are scoped to the current case.
         </Text>
+
+        {/* Clipboard hint */}
         {showClipboardHint ? (
           <View
             style={{
               padding: 10,
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: colors.primary,
-              backgroundColor: colors.primaryBg,
+              borderColor: colors.orange,
+              backgroundColor: colors.orangeSoft,
             }}
           >
-            <Text style={{ color: colors.primary, fontWeight: "700" }}>
+            <Text style={{ color: colors.orange, fontWeight: "800" }}>
               👋 Tip: Copy text anywhere and paste it here instantly
             </Text>
           </View>
         ) : null}
 
+        {/* Clipboard button */}
         <Pressable
           onPress={onPasteFromClipboard}
-          disabled={isPasting}
+          disabled={isPasting || !hasCase}
           style={[
             styles.clipboardButton,
-            { backgroundColor: colors.primaryBg, borderColor: colors.border, opacity: isPasting ? 0.7 : 1 },
+            {
+              opacity: isPasting || !hasCase ? 0.55 : 1,
+              backgroundColor: colors.orangeSoft,
+              borderColor: colors.border,
+            },
           ]}
         >
-          {isPasting ? <ActivityIndicator color={colors.primary} /> : null}
-          <Text style={[styles.clipboardButtonText, { color: colors.primary }]}>
-            {isPasting ? "Pasting…" : "Paste from clipboard"}
+          {isPasting ? <ActivityIndicator color={colors.orange} /> : null}
+          <Text style={[styles.clipboardButtonText, { color: colors.orange }]}>
+            {!hasCase ? "Choose a case to paste" : isPasting ? "Pasting…" : "Paste from clipboard"}
           </Text>
         </Pressable>
       </View>
 
+      {/* Note card */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.label, { color: colors.subtext }]}>Your note</Text>
+
         <TextInput
           value={text}
           onChangeText={(v) => {
@@ -127,45 +172,51 @@ export default function AddScreen() {
           placeholderTextColor={colors.placeholder}
           multiline
           style={[styles.input, { color: colors.text }]}
-          selectionColor={colors.primary}
+          selectionColor={colors.orange}
+          editable={hasCase}
         />
+
         <Text style={[styles.helper, { color: colors.subtext }]}>
           Tip: longer notes are chunked automatically for better retrieval.
         </Text>
       </View>
 
+      {/* Error */}
       {error ? (
         <View style={[styles.banner, { borderColor: colors.danger, backgroundColor: "rgba(255,107,107,0.10)" }]}>
           <Text style={[styles.bannerText, { color: colors.danger }]}>{error}</Text>
         </View>
       ) : null}
 
+      {/* Saved banner */}
       {savedId ? (
         <View style={[styles.banner, { borderColor: colors.border, backgroundColor: colors.success }]}>
           <Text style={[styles.bannerText, { color: colors.text }]}>Saved ✅ (id: {savedId})</Text>
 
           <Pressable
             onPress={() => router.push({ pathname: "/ask", params: { hint: "Ask about the note I just added" } })}
-            style={[styles.secondaryButton, { backgroundColor: colors.primaryBg, borderColor: colors.border }]}
+            style={[styles.secondaryButton, { backgroundColor: colors.orangeSoft, borderColor: colors.border }]}
           >
-            <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Ask about this</Text>
+            <Text style={[styles.secondaryButtonText, { color: colors.orange }]}>Ask about this</Text>
           </Pressable>
         </View>
       ) : null}
 
+      {/* Save button */}
       <Pressable
         disabled={!canSave}
         onPress={onSave}
         style={[
           styles.primaryButton,
           {
-            backgroundColor: canSave ? colors.primary : isDark ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.08)",
+            backgroundColor: canSave ? colors.orange : "rgba(255,255,255,0.08)",
             borderColor: canSave ? "transparent" : colors.border,
+            opacity: canSave ? 1 : 0.6,
           },
         ]}
       >
-        {isSaving ? <ActivityIndicator color={canSave ? "#fff" : colors.text} /> : null}
-        <Text style={[styles.primaryButtonText, { color: canSave ? "#fff" : colors.text }]}>
+        {isSaving ? <ActivityIndicator color={canSave ? "#FFFFFF" : colors.text} /> : null}
+        <Text style={[styles.primaryButtonText, { color: canSave ? "#FFFFFF" : colors.text }]}>
           {isSaving ? "Saving…" : "Save"}
         </Text>
       </Pressable>
@@ -174,23 +225,17 @@ export default function AddScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    padding: 16,
-    gap: 12,
-  },
-  header: {
-    gap: 10,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
-    letterSpacing: -0.2,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
+  screen: { flex: 1, padding: 16, gap: 12 },
+
+  caseBar: { borderWidth: 1, borderRadius: 16, padding: 12, gap: 6 },
+  caseBarLabel: { fontSize: 12, fontWeight: "800", letterSpacing: 0.4, textTransform: "uppercase" },
+  caseBarRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  caseBarName: { flex: 1, fontSize: 16, fontWeight: "900" },
+  caseBarBtn: { paddingVertical: 6, paddingHorizontal: 10 },
+
+  header: { gap: 10 },
+  title: { fontSize: 20, fontWeight: "800", letterSpacing: -0.2 },
+  subtitle: { fontSize: 14, lineHeight: 20 },
 
   clipboardButton: {
     paddingVertical: 10,
@@ -203,22 +248,10 @@ const styles = StyleSheet.create({
     gap: 10,
     alignSelf: "flex-start",
   },
-  clipboardButtonText: {
-    fontWeight: "700",
-  },
+  clipboardButtonText: { fontWeight: "800" },
 
-  card: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    gap: 8,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-  },
+  card: { borderWidth: 1, borderRadius: 16, padding: 12, gap: 8 },
+  label: { fontSize: 12, fontWeight: "800", letterSpacing: 0.4, textTransform: "uppercase" },
   input: {
     minHeight: 190,
     padding: 12,
@@ -228,33 +261,16 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
     fontSize: 16,
     lineHeight: 22,
-    backgroundColor: "rgba(0,0,0,0.02)",
+    backgroundColor: "rgba(255,255,255,0.04)",
   },
-  helper: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  banner: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 12,
-    gap: 10,
-  },
-  bannerText: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "600",
-  },
-  secondaryButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    fontWeight: "700",
-  },
+  helper: { fontSize: 12, lineHeight: 16 },
+
+  banner: { borderWidth: 1, borderRadius: 14, padding: 12, gap: 10 },
+  bannerText: { fontSize: 14, lineHeight: 20, fontWeight: "700" },
+
+  secondaryButton: { paddingVertical: 12, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, alignItems: "center" },
+  secondaryButtonText: { fontWeight: "900" },
+
   primaryButton: {
     paddingVertical: 14,
     paddingHorizontal: 14,
@@ -265,8 +281,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
   },
-  primaryButtonText: {
-    fontWeight: "800",
-    fontSize: 16,
-  },
+  primaryButtonText: { fontWeight: "900", fontSize: 16 },
 });

@@ -3,7 +3,6 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet } from 
 import { router, useLocalSearchParams } from "expo-router";
 import { ask } from "@/src/api/ask";
 import { ApiError } from "@/src/api/client";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { addToHistory } from "@/src/storage/history";
 
 export default function AskScreen() {
@@ -13,17 +12,14 @@ export default function AskScreen() {
   const [isAsking, setIsAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-
   const colors = {
-    bg: isDark ? "#0B0F17" : "#F6F7FB",
-    card: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.9)",
-    border: isDark ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.10)",
-    text: isDark ? "#FFFFFF" : "#0F172A",
-    subtext: isDark ? "rgba(255,255,255,0.72)" : "rgba(15,23,42,0.70)",
-    placeholder: isDark ? "rgba(255,255,255,0.45)" : "rgba(15,23,42,0.35)",
-    primary: isDark ? "#60A5FA" : "#2563EB",
+    bg: "#0B0F17",
+    card: "rgba(255,255,255,0.06)",
+    border: "rgba(255,255,255,0.10)",
+    text: "#FFFFFF",
+    subtext: "rgba(255,255,255,0.72)",
+    placeholder: "rgba(255,255,255,0.45)",
+    primary: "#60A5FA",
     danger: "#FF6B6B",
   };
 
@@ -87,7 +83,7 @@ export default function AskScreen() {
         style={[
           styles.primaryButton,
           {
-            backgroundColor: canAsk ? colors.primary : isDark ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.08)",
+            backgroundColor: canAsk ? colors.primary : "rgba(255,255,255,0.10)",
             borderColor: canAsk ? "transparent" : colors.border,
           },
         ]}
@@ -117,7 +113,7 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
     fontSize: 16,
     lineHeight: 22,
-    backgroundColor: "rgba(0,0,0,0.02)",
+    backgroundColor: "rgba(255,255,255,0.04)",
   },
   banner: { borderWidth: 1, borderRadius: 14, padding: 12 },
   bannerText: { fontSize: 14, lineHeight: 20, fontWeight: "600" },

@@ -1,21 +1,17 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme() ?? "light";
-
-  const isDark = colorScheme === "dark";
 
   return (
-    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={DarkTheme}>
       <Stack
         screenOptions={{
           headerTitle: "",
           headerShadowVisible: false,
-          headerTintColor: isDark ? "#F59E0B" : "#000000",
+          headerTintColor: "#F59E0B",
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -27,7 +23,7 @@ export default function RootLayout() {
         <Stack.Screen name="cases" />
       </Stack>
 
-      <StatusBar style={isDark ? "light" : "dark"} />
+      <StatusBar style={"dark"} />
     </ThemeProvider>
   );
 }

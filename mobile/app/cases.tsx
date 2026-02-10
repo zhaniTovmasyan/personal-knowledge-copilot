@@ -2,21 +2,18 @@ import { useCallback, useState } from "react";
 import { View, Text, TextInput, Pressable, FlatList, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { createCase, loadCases, setCurrentCaseId, getCurrentCaseId, type CaseItem } from "@/src/storage/cases";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function CasesScreen() {
-  const isDark = useColorScheme() === "dark";
-
   const colors = {
-    bg: isDark ? "#0B0F17" : "#F6F7FB",
-    card: isDark ? "rgba(255,255,255,0.06)" : "#FFFFFF",
-    card2: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.9)",
-    border: isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.10)",
-    text: isDark ? "#FFFFFF" : "#0F172A",
-    subtext: isDark ? "rgba(255,255,255,0.65)" : "rgba(15,23,42,0.60)",
-    muted: isDark ? "rgba(255,255,255,0.45)" : "rgba(15,23,42,0.45)",
+    bg: "#0B0F17",
+    card: "rgba(255,255,255,0.06)",
+    card2: "rgba(255,255,255,0.04)",
+    border: "rgba(255,255,255,0.08)",
+    text: "#FFFFFF",
+    subtext: "rgba(255,255,255,0.65)",
+    muted: "rgba(255,255,255,0.45)",
     orange: "#F59E0B",
-    orangeBg: isDark ? "rgba(245,158,11,0.16)" : "rgba(245,158,11,0.10)",
+    orangeBg: "rgba(245,158,11,0.16)",
     danger: "#FF6B6B",
   };
 
@@ -104,7 +101,7 @@ export default function CasesScreen() {
             },
           ]}
         >
-          <Text style={[styles.createBtnText, { color: canCreate ? "#111827" : colors.orange }]}>
+          <Text style={[styles.createBtnText, { color: canCreate ? "#FFFFFF" : colors.orange }]}>
             Create case
           </Text>
         </Pressable>
