@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { View, Text, TextInput, Pressable, FlatList, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, TextInput, Pressable, FlatList, StyleSheet, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { router, useFocusEffect } from "expo-router";
-import { createCase, loadCases, setCurrentCaseId, getCurrentCaseId, type CaseItem } from "@/src/storage/cases";
+import { createCase, loadCases, setCurrentCaseId, getCurrentCaseId, deleteCase, type CaseItem } from "@/src/storage/cases";
 
 export default function CasesScreen() {
   const colors = {
@@ -53,6 +53,24 @@ export default function CasesScreen() {
     await setCurrentCaseId(item.id);
     setCurrentId(item.id);
     router.back(); // return to previous screen
+  }
+
+  function confirmDelete(item: CaseItem) {
+    Alert.alert(
+      "Delete case?",
+      `This will remove “${item.name}” from this device. Knowledge stored on the backend will remain, but this case will no longer be selectable here.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await deleteCase(item.id);
+            await refresh();
+          },
+        },
+      ]
+    );
   }
 
   return (
@@ -141,11 +159,17 @@ export default function CasesScreen() {
                 </Text>
               </View>
 
-              {isCurrent ? (
-                <View style={[styles.badge, { backgroundColor: colors.orangeBg, borderColor: colors.border }]}>
-                  <Text style={{ color: colors.orange, fontWeight: "900" }}>Current</Text>
-                </View>
-              ) : null}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                {isCurrent ? (
+                  <View style={[styles.badge, { backgroundColor: colors.orangeBg, borderColor: colors.border }]}>
+                    <Text style={{ color: colors.orange, fontWeight: "900" }}>Current</Text>
+                  </View>
+                ) : null}
+
+                <Pressable onPress={() => confirmDelete(item)}>
+                  <Text style={{ color: colors.danger, fontWeight: "700" }}>Delete</Text>
+                </Pressable>
+              </View>
             </Pressable>
           );
         }}
