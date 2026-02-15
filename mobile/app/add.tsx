@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, ScrollView } from "react-native";
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 
@@ -95,7 +95,7 @@ export default function AddScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.bg }]}>
+    <ScrollView style={[styles.screen, { backgroundColor: colors.bg }]}>
       {/* Current case bar */}
       <View style={[styles.caseBar, { borderColor: colors.border, backgroundColor: colors.card }]}>
         <Text style={[styles.caseBarLabel, { color: colors.subtext }]}>Current case</Text>
@@ -220,7 +220,7 @@ export default function AddScreen() {
           {isSaving ? "Saving…" : "Save"}
         </Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 

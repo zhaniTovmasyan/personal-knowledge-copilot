@@ -1,0 +1,15 @@
+diff --git a/backend/tests/test_main.py b/backend/tests/test_main.py
+index 6f7b8c9..e1a2b3d 100644
+--- a/backend/tests/test_main.py
++++ b/backend/tests/test_main.py
+@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
+ from backend.main import app
+ 
+ 
+-def test_root_ok():
++def test_root_returns_status_ok():
+     client = TestClient(app)
+     r = client.get("/")
+     assert r.status_code == 200
+-    assert r.json() == {"status": "ok"}
++    assert r.json() == {"status": "ok"}
