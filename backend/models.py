@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, Text, Float, String
-from db import Base
+from backend.db import Base
 
 class KnowledgeChunk(Base):
     __tablename__ = "knowledge_chunks"

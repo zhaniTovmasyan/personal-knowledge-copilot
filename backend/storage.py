@@ -1,9 +1,19 @@
 import json
 from typing import List
-from sqlalchemy.orm import Session
-from models import KnowledgeChunk
 
-def save_chunk(db: Session,case_id: int, parent_id: int, chunk_index: int, text: str, embedding: List[float]):
+from sqlalchemy.orm import Session
+
+from backend.models import KnowledgeChunk
+
+
+def save_chunk(
+    db: Session,
+    case_id: int,
+    parent_id: int,
+    chunk_index: int,
+    text: str,
+    embedding: List[float],
+) -> KnowledgeChunk:
     row = KnowledgeChunk(
         case_id=case_id,
         parent_id=parent_id,
@@ -16,13 +26,15 @@ def save_chunk(db: Session,case_id: int, parent_id: int, chunk_index: int, text:
     db.refresh(row)
     return row
 
-def list_chunks(db: Session, case_id: int):
+
+def list_chunks(db: Session, case_id: int) -> List[KnowledgeChunk]:
     return (
         db.query(KnowledgeChunk)
         .filter(KnowledgeChunk.case_id == case_id)
         .order_by(KnowledgeChunk.id.asc())
         .all()
     )
+
 
 def load_embedding(row: KnowledgeChunk) -> List[float]:
     return json.loads(row.embedding_json)
